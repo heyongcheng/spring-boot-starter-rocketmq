@@ -19,11 +19,12 @@ package com.qianmi.ms.starter.rocketmq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qianmi.ms.starter.rocketmq.annotation.RocketMQMessageListener;
-import com.qianmi.ms.starter.rocketmq.core.DefaultRocketMQListenerContainer;
-import com.qianmi.ms.starter.rocketmq.core.RocketMQListener;
-import com.qianmi.ms.starter.rocketmq.core.RocketMQTemplate;
+import com.qianmi.ms.starter.rocketmq.core.*;
+
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -81,7 +82,10 @@ public class RocketMQAutoConfiguration {
         producer.setMaxMessageSize(producerConfig.getMaxMessageSize());
         producer.setCompressMsgBodyOverHowmuch(producerConfig.getCompressMsgBodyOverHowmuch());
         producer.setRetryAnotherBrokerWhenNotStoreOK(producerConfig.isRetryAnotherBrokerWhenNotStoreOk());
-
+        Iterator<RocketMQSendMessageHook> hooksIterator = ServiceLoader.load(RocketMQSendMessageHook.class).iterator();
+        while (hooksIterator.hasNext()) {
+            producer.getDefaultMQProducerImpl().registerSendMessageHook(hooksIterator.next());
+        }
         return producer;
     }
 
@@ -179,7 +183,10 @@ public class RocketMQAutoConfiguration {
             beanFactory.registerBeanDefinition(containerBeanName, beanBuilder.getBeanDefinition());
 
             DefaultRocketMQListenerContainer container = beanFactory.getBean(containerBeanName, DefaultRocketMQListenerContainer.class);
-
+            Iterator<RocketMQConsumeMessageHook> hooksIterator = ServiceLoader.load(RocketMQConsumeMessageHook.class).iterator();
+            while (hooksIterator.hasNext()) {
+                container.addRocketMQConsumeMessageHook(hooksIterator.next());
+            }
             if (!container.isStarted()) {
                 try {
                     container.start();

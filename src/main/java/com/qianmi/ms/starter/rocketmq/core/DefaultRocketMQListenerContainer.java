@@ -23,6 +23,8 @@ import com.qianmi.ms.starter.rocketmq.enums.SelectorType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import lombok.Getter;
@@ -39,7 +41,6 @@ import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
 
 /**
@@ -47,7 +48,7 @@ import org.springframework.util.Assert;
  */
 @SuppressWarnings("WeakerAccess")
 @Slf4j
-public class DefaultRocketMQListenerContainer implements InitializingBean, RocketMQListenerContainer {
+public class DefaultRocketMQListenerContainer implements RocketMQListenerContainer {
 
     @Setter
     @Getter
@@ -108,9 +109,18 @@ public class DefaultRocketMQListenerContainer implements InitializingBean, Rocke
     @Setter
     private RocketMQListener rocketMQListener;
 
+    private List<RocketMQConsumeMessageHook> rocketMQConsumeMessageHooks;
+
     private DefaultMQPushConsumer consumer;
 
     private Class messageType;
+
+    public void addRocketMQConsumeMessageHook(RocketMQConsumeMessageHook rocketMQConsumeMessageHook) {
+        if (this.rocketMQConsumeMessageHooks == null) {
+            this.rocketMQConsumeMessageHooks = new ArrayList<RocketMQConsumeMessageHook>();
+        }
+        this.rocketMQConsumeMessageHooks.add(rocketMQConsumeMessageHook);
+    }
 
     public void setupMessageListener(RocketMQListener rocketMQListener) {
         this.rocketMQListener = rocketMQListener;
@@ -188,11 +198,6 @@ public class DefaultRocketMQListenerContainer implements InitializingBean, Rocke
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
-        start();
-    }
-
-    @Override
     public String toString() {
         return "DefaultRocketMQListenerContainer{" +
             "consumerGroup='" + consumerGroup + '\'' +
@@ -261,7 +266,12 @@ public class DefaultRocketMQListenerContainer implements InitializingBean, Rocke
         if (consumeThreadMax < consumer.getConsumeThreadMin()) {
             consumer.setConsumeThreadMin(consumeThreadMax);
         }
-
+        if (rocketMQConsumeMessageHooks != null) {
+            Iterator<RocketMQConsumeMessageHook> iterator = rocketMQConsumeMessageHooks.iterator();
+            while (iterator.hasNext()) {
+                consumer.getDefaultMQPushConsumerImpl().registerConsumeMessageHook(iterator.next());
+            }
+        }
         consumer.setMessageModel(messageModel);
 
         switch (selectorType) {
