@@ -27,7 +27,7 @@
 
     <groupId>com.qianmi</groupId>
     <artifactId>spring-boot-starter-rocketmq</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.3.1-SNAPSHOT</version>
 
     <name>Spring Boot Rocket Starter</name>
     <description>Starter for messaging using Apache RocketMQ</description>
